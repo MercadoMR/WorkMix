@@ -16,9 +16,22 @@ do
 	fi
 done < pings.conf
 
+
+
+
+
 for IP in ${cfgs[ips]}
 do
-	echo $IP
+	echo "Procesando IP:$IP"
+	resp=$(ping -c 5 -D $IP | cut -d "/" -s -f5)
+	if [ -z "$resp" ]; then
+	   echo "Host $IP no disponible informando administrador"
+
+	elif [ ${resp%.*} -ge 2000 ]; then
+	   echo "Host $IP ha tardado mas de ${cfgs[espera]} seg. informando"
+        else
+	   echo "Host $IP correcto "
+	fi
 done
 
 echo "${cfgs[intervalo]}"
