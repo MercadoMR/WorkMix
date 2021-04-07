@@ -1,4 +1,21 @@
 #!/bin/bash
+
+reportar ()
+{
+
+swaks --server smtp.gmail.com --port 587 \
+	--to $2 \
+	--from martin.mimr@gmail.com \
+	--auth LOGIN \
+	--auth-user martin.mimr@gmail.com \
+	--auth-password n0m3l0s3 \
+	-tls --attach-type plain/text \
+	--attach $1 \
+	--header "Subject: Reporte de monitoreo" \
+	--body "Hubo algunos problemas con al red.\n Se adjunta un archivo indicando los problemas detectados."
+
+}
+
 typeset -A cfgs
 cfgs=(
 	[intervalo]=5
@@ -43,6 +60,15 @@ else
 	fi
 fi
 
+FECHA=`date +"%d/%m/%Y"`
+REPORTE="reporte${FECHA}.txt"
+if [ ! -f "$REPORTE" ]; then
+    echo "REPORTE DE MONITOREO A LA RED" > $REPORTE
+    echo "FECHA:$FECHA" >> $REPORTE
+    echo "\n -------------------------------------- \n" >> $REPORTE
+fi
+
+ENVIAR=0
 LIM=$((${cfgs[espera]} * 1000))
 # Ping request to each ip given
 for IP in ${cfgs[ips]}
@@ -50,14 +76,24 @@ do
 	echo "Haciendo ping a dispositivo con ip:$IP"
 	resp=$(ping -c 5 -D $IP | cut -d "/" -s -f5)
 	if [ -z "$resp" ]; then
-	   echo "Host $IP no disponible informando administrador"
+	   ENVIAR=1
+	   HORA=$(date +"%H:%M:%S")
+	   echo "$HORA: El host con ip $IP no se pudo contactar." >> $REPORTE
 	elif [ ${resp%.*} -ge $LIM ]; then
-	   echo "Host $IP ha tardado mas de ${cfgs[espera]} seg. informando"
+	   ENVIAR=1
+	   HORA=$(date +"%H:%M:%S")
+	   echo "$HORA: El host con ip $IP ha tardado mas de ${cfgs[espera]} seg." >> $REPORTE
         else
-	   echo "Host $IP correcto "
+	   #echo "Host $IP correcto "
 	fi
 done
 
-echo "${cfgs[intervalo]}"
-echo "${cfgs[espera]}"
-echo "${cfgs[correo]}"
+echo "Monitoreo a la red realizado!"
+
+if [ $ENVIAR -eq 1 ]; then
+	echo "\n -------------------------------- \n" >> $REPORTE
+	echo "Se detectaron problemas con la red."
+	echo "Informando al administrador con correo ${cfgs[correo]}"
+	reportar $REPORTE ${cfgs[correo]}
+fi
+
