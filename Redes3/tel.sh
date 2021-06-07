@@ -26,11 +26,11 @@ report ()
 		--from martin.mimr@gmail.com \
 		--auth LOGIN \
 		--auth-user martin.mimr@gmail.com \
-		--auth-password "" \
+		--auth-password '' \
 		-tls --attach-type plain/text \
 		--attach $1 \
-		--header "Subject: Reporte de monitoreo" \
-		--body "Hubo algunos problemas con al red.\n Se adjunta un archivo indicando los problemas detectados."
+		--header "Subject: Reporte de cambios" \
+		--body "Se detectaron cambios a la configuracion del dispositivo.\n Se adjunta un archivo indicando los cambios detectados."
 
 }
 
@@ -39,6 +39,7 @@ CVS='/usr/local/cvsroot'
 if [ -d $CVS ]; 
   then
   echo 'El repositorio de cvs fue encontrado';
+  export CVSROOT=$CVS;
 else
   echo 'El repositorio de cvs no fue encontrado :(';
   echo 'Creandolo...';
@@ -58,15 +59,16 @@ while read comando
       echo "$comando";
   }
 done < $COMANDOS | telnet $ROUTER > $ACTUAL
+
 #CLEAN RETRIEVED ROUTER CONFIGURATION FILE
 clean_output $ACTUAL;
-
 ### CREATE TODAY PROJECT FOLDER INSIDE THE REPO IF DOESN'T EXIST
 FECHA=`date +"%d%m%Y"`
 TODAY_PRO="config${FECHA}"
 if ! cvs checkout $TODAY_PRO >/dev/null;
    then
-	echo "El proyecto de hoy no existe";
+	echo 'El proyecto para hoy no existe';
+	echo 'Creandolo...';
 	mkdir temprep;
 	cp $ACTUAL temprep/
 	cd temprep;
@@ -75,23 +77,30 @@ if ! cvs checkout $TODAY_PRO >/dev/null;
 	rm -r temprep;
 	cvs checkout $TODAY_PRO
 fi
+
 ### CLONE OR UPDATE LOCAL PROJECT FOLDER
-if [ ! -d $TODAY_LOC ];
+if [ ! -d $TODAY_PRO ];
   then
     echo "El directorio de hoy no fue encontrado";
     echo "Clonandolo desde el repositorio";
-    cvs checkout $TODAY_LOC;
+    cvs checkout $TODAY_PRO;
   else
-    cd $TODAY_LOC
+    cd $TODAY_PRO
+    rm $ACTUAL
     cvs update
     cd ..
 fi
 
-### CHECK FOR CHANGES
-cd $TODAY_LOC
+### PLACE THE ONE JUST RETRIEVED INSIDE THE FOLDER
+cp $ACTUAL $TODAY_PRO/$ACTUAL
+
+### AND CHECK FOR CHANGES
+cd $TODAY_PRO
 DIFFS='diffs.txt'
 SEPARATOR=$(cvs diff $ACTUAL | grep -n diff | cut -f1 -d:)
 if [ -n "$SEPARATOR" ]; then
+    echo 'Se encontraron cambios a la configuracion del router';
+    #### FIND THE CHANGES AND SAVE THEM INTO DIFFS
     find_diffs $ACTUAL $DIFFS;
     cd ..
     #### CREATE REPORT FILE IF WAS NOT CREATED PREVIOUSLY
@@ -106,10 +115,13 @@ if [ -n "$SEPARATOR" ]; then
 	    echo "A continuación de muestran los cambios detectados." >> $REPORTE
 	    echo "--------------------------------------" >> $REPORTE
     fi
+    ### POINT CHANGES INTO THE REPORT FILE
     HORA=$(date +"%H:%M:%S")
     echo "Los siguientes cambios fueron detectados a las $HORA" >> $REPORTE
     cat $DIFFS >> $REPORTE
     echo '--------------------------------------' >> $REPORTE
-    CORREO='martin.mimr@gmail.com'
+    CORREO=martin.mimr@gmail.com
     report $REPORTE $CORREO;
+else 
+    echo 'Monitoreo finalizado. No se encontraron cambios!';
 fi
