@@ -1,4 +1,4 @@
-A bunch of useful references that I think would be worth take a peek on them.
+A bunch of useful references that I think would be worth taking a peek on them.
 
 CREATION OF THE README.MD: https://gist.github.com/Villanuevand/6386899f70346d4580c723232524d35a
 IGNORING FILES WHEN UPLOADING TO GITHUB: https://stackoverflow.com/questions/987142/make-gitignore-ignore-everything-except-a-few-files
